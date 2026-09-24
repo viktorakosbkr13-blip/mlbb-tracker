@@ -766,6 +766,13 @@ def load_hero_counters():
     return pd.DataFrame(rows)
 
 
+@st.cache_data(ttl=30)
+def load_top_counters():
+    client = get_client()
+    rows = client.table("top_counters").select("*").execute().data
+    return pd.DataFrame(rows)
+
+
 matches = load_matches()
 snapshots = load_career_snapshots()
 favorites = load_hero_favorites()
@@ -776,6 +783,7 @@ tiers = load_tier_list()
 reports = load_coaching_reports()
 portraits = load_hero_portraits()
 counters = load_hero_counters()
+top_counters = load_top_counters()
 match_heroes_df = load_match_heroes()
 
 
@@ -1075,7 +1083,9 @@ def compute_personal_tiers(scope):
     return df
 
 
-sub_official, sub_personal = st.tabs(["\U0001F30D Official meta", "\U0001F464 My performance"])
+sub_official, sub_personal, sub_top_counters = st.tabs(
+    ["\U0001F30D Official meta", "\U0001F464 My performance", "\U0001F525 Top counters"]
+)
 
 with sub_official:
     st.subheader("Current meta tier list")
@@ -1164,6 +1174,44 @@ with sub_personal:
                     st.dataframe(display, use_container_width=True, hide_index=True)
             st.divider()
         st.caption("Tiers: S ≥60% · A ≥52% · B ≥45% · C ≥35% · D <35% win rate. Small sample sizes (1-2 games) can be noisy — check the Matches column.")
+
+with sub_top_counters:
+    st.subheader("Top 10 counter heroes")
+    st.caption(
+        "Ranked by how many heroes they counter, from official Moonton data (mobilelegends.com/rank, "
+        "Mythical Glory+, past 7 days). Cross-checked against independent community sources where noted below."
+    )
+    if top_counters.empty:
+        st.info("No top-counters data yet.")
+    else:
+        rank_groups = (
+            top_counters.groupby(["rank", "hero"])
+            .agg(
+                targets=("target_hero", lambda s: sorted(s)),
+                note=("corroboration_note", "first"),
+                src=("corroboration_source", "first"),
+            )
+            .reset_index()
+            .sort_values("rank")
+        )
+        for _, row in rank_groups.iterrows():
+            hcol, ccol = st.columns([1, 5])
+            with hcol:
+                st.markdown(
+                    f'<div style="text-align:center;">'
+                    f'{avatar_div(row["hero"], hero_image_url(row["hero"]))}'
+                    f'<div style="font-family:\'Orbitron\',sans-serif;color:{ACCENT_GOLD};font-weight:700;font-size:1.3rem;">#{int(row["rank"])}</div>'
+                    f'<div style="font-family:\'Rajdhani\',sans-serif;font-weight:700;">{row["hero"]}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            with ccol:
+                st.caption(f"Counters {len(row['targets'])} heroes")
+                st.markdown(counter_chip_row(row["targets"], WIN_GREEN), unsafe_allow_html=True)
+                if pd.notna(row.get("note")):
+                    src_txt = f" — [source]({row['src']})" if pd.notna(row.get("src")) else ""
+                    st.caption(f"{row['note']}{src_txt}")
+            st.divider()
 
 # ---------------------------------------------------------------------------
 # Dashboard
