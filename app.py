@@ -527,6 +527,16 @@ with tab_coach:
             st.markdown(f'<div class="mlbb-aspire"><b>{tip["title"]}</b><br>{tip["body"]}</div>', unsafe_allow_html=True)
         st.divider()
 
+    pattern_tips = tips[tips["category"] == "pattern"] if not tips.empty else tips
+    if not pattern_tips.empty:
+        st.subheader("\U0001F50D Your patterns")
+        st.caption("Mined from your own logged matches — not generic advice, things your data actually shows.")
+        for _, tip in pattern_tips.sort_values("created_at", ascending=False).iterrows():
+            with st.expander(f"**{tip['title']}**", expanded=True):
+                st.markdown(tip["body"])
+                st.caption(f"{tip['source']} · {pd.to_datetime(tip['created_at']).strftime('%Y-%m-%d')}")
+        st.divider()
+
     meta_tips = tips[tips["category"] == "meta"] if not tips.empty else tips
     if not meta_tips.empty:
         st.subheader("⚡ Latest meta shifts")
