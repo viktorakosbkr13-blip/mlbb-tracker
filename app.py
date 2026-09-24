@@ -1,5 +1,6 @@
 import re
 import hashlib
+from datetime import date
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -29,6 +30,7 @@ LOSS_RED = "#ff4d6d"
 TIER_COLORS = {"S": "#ff3d71", "A": "#ff9f43", "B": "#f2c94c", "C": "#39ffb0", "D": "#8892b0"}
 ROLE_ICON = {"exp": "⚔️", "jungle": "\U0001F332", "mid": "\U0001F52E", "roam": "\U0001F6E1️", "gold": "\U0001F3F9"}
 ROLE_LABEL = {"exp": "EXP Lane", "jungle": "Jungle", "mid": "Mid Lane", "roam": "Roam", "gold": "Gold Lane"}
+RANK_LADDER = ["Warrior", "Elite", "Master", "Grandmaster", "Epic", "Legend", "Mythic", "Mythical Honor", "Mythical Glory"]
 
 st.markdown(f"""
 <style>
@@ -336,6 +338,60 @@ hr {{
 [data-testid="stSpinner"] p {{
     font-family: 'Rajdhani', sans-serif; font-weight: 600; color: {ACCENT_CYAN} !important;
 }}
+
+/* ---- Insight of the day ---- */
+.insight-card {{
+    border-left: 3px solid {ACCENT_GOLD};
+    background: linear-gradient(90deg, rgba(240,197,49,0.08), rgba(46,230,255,0.04));
+    backdrop-filter: blur(8px);
+    padding: 1rem 1.2rem;
+    border-radius: 0 14px 14px 0;
+    margin-bottom: 1rem;
+}}
+.insight-label {{
+    font-family: 'Orbitron', sans-serif; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: {ACCENT_GOLD}; margin-bottom: 0.35rem;
+}}
+.insight-title {{ font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.1rem; color: #f5f7fb; margin-bottom: 0.2rem; }}
+.insight-body {{ font-size: 0.85rem; color: #b9c4d6; line-height: 1.4; }}
+
+/* ---- Achievement / streak badges ---- */
+.badge-chip {{
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 999px; margin: 0 8px 8px 0;
+    background: rgba(18,16,40,0.6); border: 1px solid rgba(46,230,255,0.25);
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.85rem; color: #dbe3f0;
+}}
+.badge-chip.glow {{
+    border-color: {ACCENT_GOLD};
+    box-shadow: 0 0 14px rgba(240,197,49,0.4);
+    color: {ACCENT_GOLD};
+}}
+.badge-chip .bc-icon {{ font-size: 1rem; }}
+
+/* ---- Rank ladder ---- */
+.rank-ladder {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 2px; margin: 0.7rem 0 0.5rem 0; }}
+.rank-step {{ flex: 1; text-align: center; position: relative; }}
+.rank-step::before {{
+    content: ''; position: absolute; top: 9px; left: -50%; width: 100%; height: 2px;
+    background: rgba(46,230,255,0.15); z-index: 0;
+}}
+.rank-step:first-child::before {{ display: none; }}
+.rank-step.passed::before, .rank-step.active::before {{
+    background: linear-gradient(90deg, {ACCENT_PURPLE}, {ACCENT_CYAN});
+}}
+.rank-dot {{
+    width: 18px; height: 18px; border-radius: 50%; margin: 0 auto 6px auto;
+    background: rgba(18,16,40,0.8); border: 2px solid rgba(46,230,255,0.25);
+    position: relative; z-index: 1;
+}}
+.rank-step.passed .rank-dot {{ background: {ACCENT_CYAN}; border-color: {ACCENT_CYAN}; }}
+.rank-step.active .rank-dot {{
+    background: {ACCENT_GOLD}; border-color: {ACCENT_GOLD};
+    box-shadow: 0 0 14px rgba(240,197,49,0.7); width: 22px; height: 22px; margin-top: -2px;
+}}
+.rank-label {{ font-size: 0.62rem; color: #8b93c4; font-family: 'Rajdhani', sans-serif; font-weight: 600; white-space: nowrap; }}
+.rank-step.active .rank-label {{ color: {ACCENT_GOLD}; font-weight: 700; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -422,6 +478,118 @@ def result_chip(result):
     cls = "result-win" if str(result).lower() == "win" else "result-loss"
     label = "W" if str(result).lower() == "win" else "L"
     return f'<span class="result-chip {cls}">{label}</span>'
+
+
+def badge_chip(icon, label, glow=False):
+    cls = "badge-chip glow" if glow else "badge-chip"
+    return f'<span class="{cls}"><span class="bc-icon">{icon}</span>{label}</span>'
+
+
+def render_rank_ladder(df):
+    st.subheader("Rank ladder")
+    current = None
+    if not df.empty and "rank_tier" in df.columns:
+        recent = df.dropna(subset=["rank_tier"]).sort_values("played_at", ascending=False)
+        if not recent.empty:
+            current = recent.iloc[0]["rank_tier"]
+    if not current:
+        st.caption("No rank logged yet — send Claude a screenshot of your rank badge and it'll show up here.")
+        return
+    cur_low = str(current).lower()
+    cur_idx = next((i for i, t in enumerate(RANK_LADDER) if t.lower() in cur_low), len(RANK_LADDER) - 1)
+    steps = []
+    for i, tname in enumerate(RANK_LADDER):
+        state = "active" if i == cur_idx else ("passed" if i < cur_idx else "")
+        steps.append(f'<div class="rank-step {state}"><div class="rank-dot"></div><div class="rank-label">{tname}</div></div>')
+    st.markdown(f'<div class="rank-ladder">{"".join(steps)}</div>', unsafe_allow_html=True)
+    st.caption(f"Current: **{current}**")
+
+
+def render_activity_heatmap(df):
+    if df.empty:
+        return
+    st.subheader("Activity heatmap")
+    daily = df.copy()
+    daily["date"] = daily["played_at"].dt.floor("D")
+    grp = daily.groupby("date").agg(games=("result", "count"), wins=("result", lambda s: (s == "win").sum())).reset_index()
+    grp["win_rate"] = (grp["wins"] / grp["games"] * 100).round(1)
+
+    end = grp["date"].max()
+    start = end - pd.Timedelta(weeks=11)
+    start = start - pd.Timedelta(days=int(start.weekday()))
+    full = pd.DataFrame({"date": pd.date_range(start, end, freq="D")}).merge(grp, on="date", how="left")
+    full["games"] = full["games"].fillna(0)
+    full["week"] = ((full["date"] - start).dt.days // 7).astype(int)
+    full["weekday"] = full["date"].dt.weekday
+
+    n_weeks = int(full["week"].max()) + 1
+    z = [[0] * n_weeks for _ in range(7)]
+    text = [[""] * n_weeks for _ in range(7)]
+    for _, r in full.iterrows():
+        w, d = int(r["week"]), int(r["weekday"])
+        z[d][w] = r["games"]
+        if r["games"] > 0:
+            text[d][w] = f"{r['date'].strftime('%Y-%m-%d')}<br>{int(r['games'])} games · {r['win_rate']:.0f}% WR"
+        else:
+            text[d][w] = f"{r['date'].strftime('%Y-%m-%d')}<br>No games"
+
+    week_labels = [(start + pd.Timedelta(weeks=w)).strftime("%b %d") for w in range(n_weeks)]
+    fig = go.Figure(data=go.Heatmap(
+        z=z, x=week_labels, y=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        text=text, hoverinfo="text",
+        colorscale=[[0, "rgba(18,16,40,0.55)"], [0.001, "rgba(57,255,176,0.18)"], [1, WIN_GREEN]],
+        showscale=False, xgap=4, ygap=4,
+    ))
+    fig.update_layout(height=230)
+    st.plotly_chart(style_fig(fig), use_container_width=True)
+    st.caption("Darker green = more games played that day. Last 12 weeks.")
+
+
+def render_hero_radar(hero, role):
+    if tiers.empty:
+        return
+    hero_row = tiers[(tiers["hero"] == hero) & (tiers["role"] == role)]
+    if hero_row.empty:
+        return
+    role_rows = tiers[tiers["role"] == role]
+    h = hero_row.iloc[0]
+    metrics = ["win_rate", "pick_rate", "ban_rate"]
+    labels = ["Win Rate", "Pick Rate", "Ban Rate"]
+    hero_raw = [float(h.get(m) or 0) for m in metrics]
+    avg_raw = [float(role_rows[m].mean() or 0) for m in metrics]
+
+    def norm(val, metric):
+        series = tiers[metric].dropna()
+        lo, hi = series.min(), series.max()
+        if hi <= lo:
+            return 50.0
+        return max(0.0, min(100.0, (val - lo) / (hi - lo) * 100))
+
+    hero_norm = [norm(v, m) for v, m in zip(hero_raw, metrics)]
+    avg_norm = [norm(v, m) for v, m in zip(avg_raw, metrics)]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=avg_norm + [avg_norm[0]], theta=labels + [labels[0]], fill="toself",
+        name=f"{ROLE_LABEL.get(role, role)} avg", line=dict(color=ACCENT_PURPLE, width=2),
+        fillcolor=_hex_to_rgba(ACCENT_PURPLE, 0.20),
+        customdata=avg_raw + [avg_raw[0]],
+        hovertemplate="%{theta}: %{customdata:.1f}%<extra>Role avg</extra>",
+    ))
+    fig.add_trace(go.Scatterpolar(
+        r=hero_norm + [hero_norm[0]], theta=labels + [labels[0]], fill="toself",
+        name=hero, line=dict(color=ACCENT_CYAN, width=2),
+        fillcolor=_hex_to_rgba(ACCENT_CYAN, 0.25),
+        customdata=hero_raw + [hero_raw[0]],
+        hovertemplate=f"%{{theta}}: %{{customdata:.1f}}%<extra>{hero}</extra>",
+    ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, 100], showticklabels=False, gridcolor="rgba(255,255,255,0.08)")),
+        showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=-0.15),
+        height=320,
+    )
+    st.caption("Axes are scaled relative to all heroes (0-100). Hover a point for the real %.")
+    st.plotly_chart(style_fig(fig), use_container_width=True)
 
 
 AVATAR_PALETTE = ["#f0b429", "#4fd1ff", "#c084fc", "#4ade80", "#f87171", "#fb923c", "#38bdf8", "#f472b6"]
@@ -628,6 +796,16 @@ def render_hero_profile(hero):
                 tier_bits.append(f"{ROLE_LABEL.get(r, r)}: {tier_badge(trow.iloc[0]['tier'])}")
         if tier_bits:
             st.markdown("&nbsp;&nbsp;·&nbsp;&nbsp;".join(tier_bits), unsafe_allow_html=True)
+
+    radar_roles = [r for r in hero_roles if not tiers.empty and not tiers[(tiers["hero"] == hero) & (tiers["role"] == r)].empty]
+    if radar_roles:
+        st.subheader("Meta radar")
+        st.caption("This hero vs. the role average on official win/pick/ban rate.")
+        rcols = st.columns(len(radar_roles))
+        for col, r in zip(rcols, radar_roles):
+            with col:
+                st.markdown(f"**{ROLE_LABEL.get(r, r)}**")
+                render_hero_radar(hero, r)
 
     st.divider()
 
@@ -938,6 +1116,29 @@ with sub_personal:
 # Dashboard
 # ---------------------------------------------------------------------------
 with tab_dashboard:
+    insight_pool = []
+    if not tips.empty:
+        insight_pool.extend(tips.to_dict("records"))
+    if insight_pool:
+        pick = insight_pool[date.today().toordinal() % len(insight_pool)]
+        hero_tag = f" · {pick['hero']}" if pd.notna(pick.get("hero")) else ""
+        st.markdown(
+            f'<div class="insight-card">'
+            f'<div class="insight-label">✨ Insight of the day{hero_tag}</div>'
+            f'<div class="insight-title">{pick["title"]}</div>'
+            f'<div class="insight-body">{pick["body"]}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    if not pool.empty:
+        quick_heroes = sorted(pool["hero"].unique().tolist())
+        quick_choice = st.selectbox(
+            "\U0001F50D Quick jump to hero", options=["Type to search..."] + quick_heroes, index=0, key="quick_hero_search",
+        )
+        if quick_choice != "Type to search...":
+            go_to_hero(quick_choice)
+
     if not pool.empty:
         st.subheader("Your roster")
         st.caption("Click any hero to open their profile.")
@@ -1068,6 +1269,37 @@ with tab_dashboard:
         s2.metric("Losses", int((wl["result"] == "loss").sum()))
         s3.metric("Current streak", f"{cur_streak} {'W' if cur_streak_result == 'win' else 'L'}")
         s4.metric("Best win streak", best_win_streak)
+
+        badges = []
+        if cur_streak >= 2:
+            badges.append(badge_chip(
+                "\U0001F525", f"{cur_streak} {'win' if cur_streak_result == 'win' else 'loss'} streak",
+                glow=(cur_streak_result == "win" and cur_streak >= 3),
+            ))
+        if best_win_streak >= 2:
+            badges.append(badge_chip("\U0001F3C6", f"Best streak {best_win_streak}W"))
+        mvp_n = int(df["mvp"].sum())
+        if mvp_n:
+            badges.append(badge_chip("\U00002B50", f"{mvp_n} MVPs"))
+        if not snapshots.empty:
+            latest_snap = snapshots[snapshots["snapshot_date"] == snapshots["snapshot_date"].max()]
+            season_snap = latest_snap[latest_snap["scope"] == "current_season"]
+            srow = season_snap.iloc[0] if not season_snap.empty else (latest_snap.iloc[0] if not latest_snap.empty else None)
+            if srow is not None:
+                if pd.notna(srow.get("savage")) and srow["savage"] > 0:
+                    badges.append(badge_chip("\U0001F480", f"{int(srow['savage'])} Savage"))
+                if pd.notna(srow.get("maniac")) and srow["maniac"] > 0:
+                    badges.append(badge_chip("\U000026A1", f"{int(srow['maniac'])} Maniac"))
+                if pd.notna(srow.get("legendary")) and srow["legendary"] > 0:
+                    badges.append(badge_chip("\U0001F451", f"{int(srow['legendary'])} Legendary"))
+        if badges:
+            st.markdown("".join(badges), unsafe_allow_html=True)
+
+    st.divider()
+
+    render_activity_heatmap(df)
+    st.divider()
+    render_rank_ladder(df)
 
     st.divider()
 
