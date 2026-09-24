@@ -615,7 +615,38 @@ with tab_builds:
 # ---------------------------------------------------------------------------
 # Tier List
 # ---------------------------------------------------------------------------
-with tab_tierlist:
+def personal_tier(win_rate):
+    if win_rate >= 60:
+        return "S"
+    elif win_rate >= 52:
+        return "A"
+    elif win_rate >= 45:
+        return "B"
+    elif win_rate >= 35:
+        return "C"
+    return "D"
+
+
+def compute_personal_tiers(scope):
+    if favorites.empty:
+        return pd.DataFrame()
+    df = favorites[favorites["scope"] == scope].copy()
+    if df.empty:
+        return df
+    total_games = df["matches"].sum()
+    df["pick_rate"] = (df["matches"] / total_games * 100).round(2)
+    df["tier"] = df["win_rate"].apply(personal_tier)
+    if not pool.empty:
+        role_map = pool.groupby("hero")["role"].apply(lambda s: ", ".join(sorted(set(s))))
+        df["role"] = df["hero"].map(role_map)
+    else:
+        df["role"] = None
+    return df
+
+
+sub_official, sub_personal = st.tabs(["\U0001F30D Official meta", "\U0001F464 My performance"])
+
+with sub_official:
     st.subheader("Current meta tier list")
     if tiers.empty:
         st.info("No tier list data yet. Send a tier-list screenshot to Claude and it'll be added here.")
@@ -628,9 +659,9 @@ with tab_tierlist:
         pool_heroes = set(pool["hero"].unique().tolist()) if not pool.empty else set()
         c1, c2 = st.columns([1, 1])
         with c1:
-            only_pool = st.checkbox("Show only heroes in my pool", value=False)
+            only_pool = st.checkbox("Show only heroes in my pool", value=False, key="official_only_pool")
         with c2:
-            sort_by = st.selectbox("Sort by", ["Win rate", "Pick rate", "Ban rate"], index=0)
+            sort_by = st.selectbox("Sort by", ["Win rate", "Pick rate", "Ban rate"], index=0, key="official_sort")
 
         tv = tiers.copy()
         if only_pool and pool_heroes:
@@ -638,7 +669,7 @@ with tab_tierlist:
 
         tier_order = ["S", "A", "B", "C", "D"]
         roles_present = [r for r in ["exp", "jungle", "mid", "roam", "gold"] if r in tv["role"].dropna().unique()] or [None]
-        role_pick = st.selectbox("Role", ["All"] + [ROLE_LABEL.get(r, r) for r in roles_present if r], index=0) if any(roles_present) else "All"
+        role_pick = st.selectbox("Role", ["All"] + [ROLE_LABEL.get(r, r) for r in roles_present if r], index=0, key="official_role") if any(roles_present) else "All"
         if role_pick != "All":
             inv_label = {v: k for k, v in ROLE_LABEL.items()}
             tv = tv[tv["role"] == inv_label.get(role_pick, role_pick)]
@@ -664,6 +695,31 @@ with tab_tierlist:
                     for _, r in tier_rows.sort_values("hero").iterrows()
                 )
                 st.markdown(f'<div style="margin-bottom:1rem">{chips}</div>', unsafe_allow_html=True)
+
+with sub_personal:
+    st.subheader("Your personal tier list")
+    st.caption("Built from your own win rate, pick rate (share of your games), and hero power — not the global meta.")
+    fav_scopes = [s for s in ["current_season", "all_time"] if not favorites.empty and s in favorites["scope"].unique()]
+    if not fav_scopes:
+        st.info("No favorite-hero stats logged yet.")
+    else:
+        p_scope = st.radio("Scope", fav_scopes, horizontal=True,
+                            format_func=lambda s: s.replace("_", " ").title(), key="personal_scope")
+        pdf = compute_personal_tiers(p_scope)
+        if pdf.empty:
+            st.info("No data for this scope yet.")
+        else:
+            tier_order = ["S", "A", "B", "C", "D"]
+            for t in tier_order:
+                tier_rows = pdf[pdf["tier"] == t]
+                if tier_rows.empty:
+                    continue
+                st.markdown(tier_badge(t) + f"&nbsp;&nbsp;**{len(tier_rows)} heroes**", unsafe_allow_html=True)
+                display = tier_rows[["hero", "role", "win_rate", "pick_rate", "matches", "hero_power"]].copy()
+                display = display.sort_values("win_rate", ascending=False)
+                display.columns = ["Hero", "Role(s)", "Win Rate %", "Pick Rate %", "Matches", "Hero Power"]
+                st.dataframe(display, use_container_width=True, hide_index=True)
+            st.caption("Tiers: S ≥60% · A ≥52% · B ≥45% · C ≥35% · D <35% win rate. Small sample sizes (1-2 games) can be noisy — check the Matches column.")
 
 # ---------------------------------------------------------------------------
 # Dashboard
