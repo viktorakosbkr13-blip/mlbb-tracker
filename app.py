@@ -465,6 +465,32 @@ def tier_grid_html(rows, tier, stat_label="win_rate", stat_suffix="%", sub_label
     return f'<div class="tier-grid">{"".join(chips)}</div>'
 
 
+def counter_chip_row(names, color):
+    """Small hero-portrait chips with no stat line, used for counter-pick lists."""
+    glow = _hex_to_rgba(color, 0.45)
+    chips = []
+    for name in names:
+        thumb = hero_image_url(name)
+        if thumb:
+            avatar_style = f"background-image:url('{thumb}');"
+            inner = ""
+        else:
+            acolor = hero_avatar_color(name)
+            avatar_style = f"background: radial-gradient(circle at 50% 35%, {acolor}33, #10131c 75%);"
+            initials = "".join([w[0] for w in name.replace("-", " ").split()][:2]).upper()
+            inner = (
+                f'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
+                f'font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:0.95rem;color:{acolor};">{initials}</div>'
+            )
+        chips.append(
+            f'<div class="tier-chip">'
+            f'<div class="tc-avatar" style="{avatar_style}position:relative;--tc-color:{color};--tc-glow:{glow};">{inner}</div>'
+            f'<div class="tc-name">{name}</div>'
+            f'</div>'
+        )
+    return f'<div class="tier-grid">{"".join(chips)}</div>'
+
+
 def role_chip(role):
     if pd.isna(role):
         return ""
@@ -733,6 +759,13 @@ def load_hero_portraits():
     return pd.DataFrame(rows)
 
 
+@st.cache_data(ttl=30)
+def load_hero_counters():
+    client = get_client()
+    rows = client.table("hero_counters").select("*").execute().data
+    return pd.DataFrame(rows)
+
+
 matches = load_matches()
 snapshots = load_career_snapshots()
 favorites = load_hero_favorites()
@@ -742,6 +775,7 @@ builds = load_hero_builds()
 tiers = load_tier_list()
 reports = load_coaching_reports()
 portraits = load_hero_portraits()
+counters = load_hero_counters()
 match_heroes_df = load_match_heroes()
 
 
@@ -806,6 +840,25 @@ def render_hero_profile(hero):
             with col:
                 st.markdown(f"**{ROLE_LABEL.get(r, r)}**")
                 render_hero_radar(hero, r)
+
+    threats = counters[counters["hero"] == hero] if not counters.empty else pd.DataFrame()
+    favorable = counters[counters["countered_by"] == hero] if not counters.empty else pd.DataFrame()
+    if not threats.empty or not favorable.empty:
+        st.subheader("Counter picks")
+        st.caption("Official Moonton data (mobilelegends.com/rank) — Mythical Glory+, past 7 days.")
+        ccol1, ccol2 = st.columns(2)
+        with ccol1:
+            st.markdown("**\U0001F6E1️ Countered by** — bad matchups against this hero")
+            if not threats.empty:
+                st.markdown(counter_chip_row(threats["countered_by"].tolist(), LOSS_RED), unsafe_allow_html=True)
+            else:
+                st.caption("No data yet.")
+        with ccol2:
+            st.markdown("**\U00002694️ Good against** — this hero counters these")
+            if not favorable.empty:
+                st.markdown(counter_chip_row(favorable["hero"].tolist(), WIN_GREEN), unsafe_allow_html=True)
+            else:
+                st.caption("No data yet.")
 
     st.divider()
 
