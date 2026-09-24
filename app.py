@@ -703,12 +703,12 @@ with sub_personal:
     if not fav_scopes:
         st.info("No favorite-hero stats logged yet.")
     else:
-        p_scope = st.radio("Scope", fav_scopes, horizontal=True,
-                            format_func=lambda s: s.replace("_", " ").title(), key="personal_scope")
-        pdf = compute_personal_tiers(p_scope)
-        if pdf.empty:
-            st.info("No data for this scope yet.")
-        else:
+        for p_scope in fav_scopes:
+            st.markdown(f"### {p_scope.replace('_', ' ').title()}")
+            pdf = compute_personal_tiers(p_scope)
+            if pdf.empty:
+                st.info("No data for this scope yet.")
+                continue
             tier_order = ["S", "A", "B", "C", "D"]
             for t in tier_order:
                 tier_rows = pdf[pdf["tier"] == t]
@@ -719,7 +719,8 @@ with sub_personal:
                 display = display.sort_values("win_rate", ascending=False)
                 display.columns = ["Hero", "Role(s)", "Win Rate %", "Pick Rate %", "Matches", "Hero Power"]
                 st.dataframe(display, use_container_width=True, hide_index=True)
-            st.caption("Tiers: S ≥60% · A ≥52% · B ≥45% · C ≥35% · D <35% win rate. Small sample sizes (1-2 games) can be noisy — check the Matches column.")
+            st.divider()
+        st.caption("Tiers: S ≥60% · A ≥52% · B ≥45% · C ≥35% · D <35% win rate. Small sample sizes (1-2 games) can be noisy — check the Matches column.")
 
 # ---------------------------------------------------------------------------
 # Dashboard
