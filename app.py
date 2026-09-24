@@ -17,149 +17,216 @@ st.set_page_config(page_title="MLBB Tracker", page_icon="\U0001F3AE", layout="wi
 # Theme
 # ---------------------------------------------------------------------------
 
-ACCENT_GOLD = "#f0b429"
-ACCENT_CYAN = "#4fd1ff"
-BG_DEEP = "#0a0e1a"
-BG_PANEL = "#111a2e"
-WIN_GREEN = "#4ade80"
-LOSS_RED = "#f87171"
+ACCENT_GOLD = "#f0c531"
+ACCENT_CYAN = "#2ee6ff"
+ACCENT_PURPLE = "#a855f7"
+ACCENT_MAGENTA = "#e935c1"
+BG_DEEP = "#050510"
+BG_PANEL = "#0c0a22"
+WIN_GREEN = "#39ffb0"
+LOSS_RED = "#ff4d6d"
 
-TIER_COLORS = {"S": "#ff4d6d", "A": "#ff9f43", "B": "#f2c94c", "C": "#6fcf97", "D": "#9099a8"}
+TIER_COLORS = {"S": "#ff3d71", "A": "#ff9f43", "B": "#f2c94c", "C": "#39ffb0", "D": "#8892b0"}
 ROLE_ICON = {"exp": "⚔️", "jungle": "\U0001F332", "mid": "\U0001F52E", "roam": "\U0001F6E1️", "gold": "\U0001F3F9"}
 ROLE_LABEL = {"exp": "EXP Lane", "jungle": "Jungle", "mid": "Mid Lane", "roam": "Roam", "gold": "Gold Lane"}
 
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 html, body, [class*="css"] {{
     font-family: 'Inter', sans-serif;
 }}
+
+/* ---- Galactic background: nebula gradients + starfield ---- */
 .stApp {{
-    background: radial-gradient(circle at 10% 0%, #14213d 0%, {BG_DEEP} 45%) fixed;
+    background-image:
+        radial-gradient(ellipse 900px 600px at 8% -5%, rgba(168,85,247,0.22) 0%, transparent 55%),
+        radial-gradient(ellipse 800px 700px at 100% 10%, rgba(46,230,255,0.14) 0%, transparent 50%),
+        radial-gradient(ellipse 700px 500px at 30% 110%, rgba(233,53,193,0.14) 0%, transparent 55%),
+        radial-gradient(ellipse 600px 500px at 90% 100%, rgba(240,197,49,0.08) 0%, transparent 50%),
+        radial-gradient(1.6px 1.6px at 40px 60px, rgba(255,255,255,0.9), transparent),
+        radial-gradient(1px 1px at 140px 25px, rgba(255,255,255,0.65), transparent),
+        radial-gradient(1.6px 1.6px at 210px 150px, rgba(200,220,255,0.85), transparent),
+        radial-gradient(1px 1px at 95px 190px, rgba(255,255,255,0.55), transparent),
+        radial-gradient(1.4px 1.4px at 260px 90px, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 170px 230px, rgba(200,220,255,0.6), transparent);
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat, repeat, repeat, repeat, repeat;
+    background-size: auto, auto, auto, auto, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px;
+    background-color: {BG_DEEP};
+    background-attachment: fixed;
 }}
 h1, h2, h3, .mlbb-title {{
     font-family: 'Rajdhani', sans-serif !important;
     letter-spacing: 0.02em;
 }}
+h2, h3 {{ color: #eef2ff !important; }}
 [data-testid="stHeader"] {{ background: transparent; }}
 [data-testid="stSidebar"] {{
     background: linear-gradient(180deg, {BG_PANEL} 0%, {BG_DEEP} 100%);
-    border-right: 1px solid rgba(240,180,41,0.15);
+    border-right: 1px solid rgba(46,230,255,0.15);
+    box-shadow: 4px 0 24px rgba(168,85,247,0.06);
+}}
+[data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{
+    font-family: 'Orbitron', sans-serif !important; font-size: 0.95rem; letter-spacing: 0.06em;
+    background: linear-gradient(90deg, {ACCENT_CYAN}, {ACCENT_PURPLE});
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}}
+
+/* ---- Hero banner ---- */
+@keyframes glowPulse {{
+    0%, 100% {{ box-shadow: 0 0 24px rgba(46,230,255,0.10), 0 0 60px rgba(168,85,247,0.06), inset 0 0 40px rgba(46,230,255,0.03); }}
+    50% {{ box-shadow: 0 0 32px rgba(46,230,255,0.18), 0 0 80px rgba(168,85,247,0.12), inset 0 0 50px rgba(46,230,255,0.06); }}
 }}
 .mlbb-hero {{
-    padding: 1.6rem 1.8rem;
-    margin-bottom: 1.2rem;
-    border-radius: 16px;
-    background: linear-gradient(120deg, rgba(240,180,41,0.10), rgba(79,209,255,0.06));
-    border: 1px solid rgba(240,180,41,0.25);
+    padding: 2rem 2.2rem;
+    margin-bottom: 1.4rem;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(168,85,247,0.14), rgba(46,230,255,0.08) 45%, rgba(233,53,193,0.10));
+    border: 1px solid rgba(46,230,255,0.28);
+    animation: glowPulse 5s ease-in-out infinite;
+    position: relative; overflow: hidden;
+}}
+.mlbb-hero::before {{
+    content: ''; position: absolute; top: -40%; right: -10%; width: 300px; height: 300px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(233,53,193,0.18), transparent 70%); pointer-events: none;
 }}
 .mlbb-hero h1 {{
-    margin: 0;
-    font-size: 2.4rem;
-    background: linear-gradient(90deg, {ACCENT_GOLD}, {ACCENT_CYAN});
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    margin: 0; font-family: 'Orbitron', sans-serif !important; font-weight: 900;
+    font-size: 2.5rem; letter-spacing: 0.04em;
+    background: linear-gradient(90deg, {ACCENT_GOLD}, {ACCENT_MAGENTA} 45%, {ACCENT_CYAN});
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px rgba(46,230,255,0.25);
 }}
-.mlbb-hero p {{
-    margin: 0.3rem 0 0 0;
-    color: #9fb0c9;
-    font-size: 0.95rem;
-}}
+.mlbb-hero p {{ margin: 0.45rem 0 0 0; color: #aab4d4; font-size: 0.95rem; position: relative; z-index: 1; }}
+
+/* ---- Glassmorphic cards ---- */
 .mlbb-card {{
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px;
+    background: rgba(18,16,40,0.55);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(46,230,255,0.14);
+    border-radius: 16px;
     padding: 1rem 1.2rem;
     margin-bottom: 0.9rem;
 }}
 .mlbb-stat-row {{ display: flex; gap: 0.9rem; flex-wrap: wrap; }}
 .mlbb-stat {{
     flex: 1 1 140px;
-    background: rgba(255,255,255,0.035);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 12px;
-    padding: 0.8rem 1rem;
+    background: rgba(18,16,40,0.55);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(46,230,255,0.16);
+    border-radius: 14px;
+    padding: 0.85rem 1.05rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }}
-.mlbb-stat .label {{ color: #8b9bb4; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }}
-.mlbb-stat .value {{ font-family: 'Rajdhani', sans-serif; font-size: 1.7rem; font-weight: 700; color: #f2f5fa; }}
-.mlbb-stat .value.gold {{ color: {ACCENT_GOLD}; }}
-.mlbb-stat .value.cyan {{ color: {ACCENT_CYAN}; }}
-.mlbb-stat .value.win {{ color: {WIN_GREEN}; }}
+.mlbb-stat:hover {{ border-color: rgba(46,230,255,0.4); box-shadow: 0 0 18px rgba(46,230,255,0.10); }}
+.mlbb-stat .label {{ color: #8b93c4; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.07em; }}
+.mlbb-stat .value {{ font-family: 'Orbitron', sans-serif; font-size: 1.6rem; font-weight: 700; color: #f2f5fa; }}
+.mlbb-stat .value.gold {{ color: {ACCENT_GOLD}; text-shadow: 0 0 14px rgba(240,197,49,0.45); }}
+.mlbb-stat .value.cyan {{ color: {ACCENT_CYAN}; text-shadow: 0 0 14px rgba(46,230,255,0.45); }}
+.mlbb-stat .value.win {{ color: {WIN_GREEN}; text-shadow: 0 0 14px rgba(57,255,176,0.4); }}
 
+/* ---- Tier badges (glowing) ---- */
 .tier-badge {{
     display: inline-flex; align-items: center; justify-content: center;
-    min-width: 30px; height: 26px; padding: 0 8px;
-    border-radius: 7px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.95rem;
-    color: #10131c; margin-right: 6px;
+    min-width: 34px; height: 30px; padding: 0 10px;
+    border-radius: 8px; font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1rem;
+    color: #08070f; margin-right: 6px;
 }}
 .role-chip {{
-    display: inline-block; padding: 2px 10px; border-radius: 999px;
-    background: rgba(79,209,255,0.12); border: 1px solid rgba(79,209,255,0.35);
+    display: inline-block; padding: 2px 11px; border-radius: 999px;
+    background: rgba(46,230,255,0.10); border: 1px solid rgba(46,230,255,0.35);
     color: {ACCENT_CYAN}; font-size: 0.78rem; margin-right: 6px;
 }}
 .result-chip {{
     display: inline-flex; align-items:center; justify-content:center;
     width: 26px; height: 26px; border-radius: 50%; font-size: 0.72rem; font-weight: 700;
 }}
-.result-win {{ background: rgba(74,222,128,0.18); color: {WIN_GREEN}; border: 1px solid rgba(74,222,128,0.5); }}
-.result-loss {{ background: rgba(248,113,113,0.18); color: {LOSS_RED}; border: 1px solid rgba(248,113,113,0.5); }}
+.result-win {{ background: rgba(57,255,176,0.16); color: {WIN_GREEN}; border: 1px solid rgba(57,255,176,0.5); box-shadow: 0 0 8px rgba(57,255,176,0.25); }}
+.result-loss {{ background: rgba(255,77,109,0.16); color: {LOSS_RED}; border: 1px solid rgba(255,77,109,0.5); box-shadow: 0 0 8px rgba(255,77,109,0.25); }}
 
 .mlbb-tip {{
     border-left: 3px solid {ACCENT_GOLD};
-    background: rgba(240,180,41,0.06);
+    background: rgba(240,197,49,0.05);
+    backdrop-filter: blur(6px);
     padding: 0.7rem 1rem;
-    border-radius: 0 10px 10px 0;
+    border-radius: 0 12px 12px 0;
     margin-bottom: 0.6rem;
 }}
 .mlbb-aspire {{
     border-left: 3px solid {ACCENT_CYAN};
-    background: rgba(79,209,255,0.07);
+    background: rgba(46,230,255,0.06);
+    backdrop-filter: blur(6px);
     padding: 0.9rem 1.1rem;
-    border-radius: 0 10px 10px 0;
+    border-radius: 0 12px 12px 0;
     margin-bottom: 0.8rem;
 }}
 [data-testid="stMetric"] {{
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 12px;
+    background: rgba(18,16,40,0.55);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(46,230,255,0.16);
+    border-radius: 14px;
     padding: 0.6rem 0.8rem 0.3rem 0.8rem;
 }}
+[data-testid="stMetricValue"] {{ font-family: 'Orbitron', sans-serif; }}
 .streamlit-expanderHeader {{
     font-family: 'Rajdhani', sans-serif;
     font-weight: 600;
 }}
+[data-testid="stExpander"] {{
+    background: rgba(18,16,40,0.4);
+    border: 1px solid rgba(46,230,255,0.12) !important;
+    border-radius: 12px !important;
+}}
 
+/* ---- Tabs: cyan/purple instead of default red ---- */
+[data-testid="stTabs"] [data-testid="stTab"] {{
+    color: #9aa3c9 !important; font-family: 'Rajdhani', sans-serif; font-weight: 600;
+    border-bottom-color: rgba(255,255,255,0.08) !important;
+}}
+[data-testid="stTabs"] [data-testid="stTab"] p {{ color: inherit !important; }}
+[data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] {{
+    color: {ACCENT_CYAN} !important;
+    border-bottom-color: {ACCENT_CYAN} !important;
+    box-shadow: 0 2px 10px -2px rgba(46,230,255,0.7);
+}}
+[data-testid="stTabs"] [data-testid="stTab"]:hover {{ color: {ACCENT_CYAN} !important; }}
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {{ background-color: {ACCENT_CYAN} !important; }}
+[data-testid="stRadio"] label, [data-testid="stCheckbox"] label {{ color: #cdd4f0 !important; }}
+
+/* ---- Hero cards (Builds tab) ---- */
 .hero-card {{
     position: relative;
     display: block;
     height: 150px;
-    border-radius: 14px;
+    border-radius: 16px;
     overflow: hidden;
     background-size: cover;
     background-position: center 15%;
-    border: 1px solid rgba(255,255,255,0.10);
+    border: 1px solid rgba(46,230,255,0.20);
     text-decoration: none;
     margin-bottom: 0.5rem;
-    transition: border-color 0.15s ease, transform 0.15s ease;
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }}
 .hero-card:hover {{
-    border-color: rgba(240,180,41,0.55);
+    border-color: rgba(46,230,255,0.65);
     transform: translateY(-2px);
+    box-shadow: 0 0 22px rgba(46,230,255,0.25);
 }}
 .hero-card::after {{
     content: '';
     position: absolute; inset: 0;
-    background: linear-gradient(to top, rgba(6,9,17,0.96) 0%, rgba(6,9,17,0.25) 55%, rgba(6,9,17,0.0) 100%);
+    background: linear-gradient(to top, rgba(5,5,16,0.96) 0%, rgba(5,5,16,0.25) 55%, rgba(5,5,16,0.0) 100%);
 }}
 .hero-card .hc-label {{
     position: absolute; left: 10px; right: 10px; bottom: 8px; z-index: 2;
 }}
 .hero-card .hc-name {{
+    display: block;
     font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.05rem; color: #f5f7fb;
     text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }}
-.hero-card .hc-sub {{ font-size: 0.72rem; color: #b9c4d6; }}
+.hero-card .hc-sub {{ display: block; font-size: 0.72rem; color: #b9c4d6; }}
 .hero-card .hc-tier {{
     position: absolute; top: 8px; right: 8px; z-index: 3;
 }}
@@ -171,20 +238,52 @@ h1, h2, h3, .mlbb-title {{
 .roster-avatar {{
     width: 100%; aspect-ratio: 1 / 1; border-radius: 50%;
     background-size: cover; background-position: center 12%;
-    border: 2px solid rgba(255,255,255,0.12);
+    border: 2px solid rgba(46,230,255,0.28);
+    box-shadow: 0 0 12px rgba(46,230,255,0.12);
     margin-bottom: 4px;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }}
+
+/* ---- Tier list hero icon grid ---- */
+.tier-grid {{ display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 1.3rem; }}
+.tier-chip {{ width: 88px; text-align: center; }}
+.tier-chip .tc-avatar {{
+    width: 66px; height: 66px; border-radius: 50%; margin: 0 auto 5px auto;
+    background-size: cover; background-position: center 12%;
+    border: 2px solid var(--tc-color, {ACCENT_CYAN});
+    box-shadow: 0 0 12px var(--tc-glow, rgba(46,230,255,0.35));
+    position: relative; transition: transform 0.15s ease;
+}}
+.tier-chip:hover .tc-avatar {{ transform: scale(1.08); }}
+.tier-chip .tc-name {{ font-size: 0.72rem; color: #e4e8fb; font-weight: 600; line-height: 1.15; font-family: 'Rajdhani', sans-serif; }}
+.tier-chip .tc-stat {{ font-size: 0.68rem; color: {ACCENT_GOLD}; font-family: 'Orbitron', sans-serif; margin-top: 1px; }}
+.tier-chip .tc-sub {{ font-size: 0.62rem; color: #7c85ad; }}
+
 .stButton > button {{
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(18,16,40,0.6);
+    border: 1px solid rgba(46,230,255,0.28);
     color: #dbe3f0;
-    border-radius: 8px;
+    border-radius: 9px;
     font-size: 0.78rem;
-    padding: 0.15rem 0.4rem;
+    font-family: 'Rajdhani', sans-serif; font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
 }}
 .stButton > button:hover {{
-    border-color: rgba(240,180,41,0.6);
-    color: {ACCENT_GOLD};
+    border-color: {ACCENT_CYAN};
+    color: {ACCENT_CYAN};
+    box-shadow: 0 0 14px rgba(46,230,255,0.3);
+}}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar {{ width: 10px; height: 10px; }}
+::-webkit-scrollbar-track {{ background: {BG_DEEP}; }}
+::-webkit-scrollbar-thumb {{ background: linear-gradient(180deg, {ACCENT_PURPLE}, {ACCENT_CYAN}); border-radius: 6px; }}
+
+[data-testid="stDataFrame"] {{
+    border: 1px solid rgba(46,230,255,0.14) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -207,6 +306,41 @@ def style_fig(fig):
 def tier_badge(tier):
     color = TIER_COLORS.get(str(tier).upper(), "#888")
     return f'<span class="tier-badge" style="background:{color}">{tier}</span>'
+
+
+def _hex_to_rgba(hex_color, alpha):
+    hex_color = hex_color.lstrip("#")
+    r, g, b = (int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{alpha})"
+
+
+def tier_grid_html(rows, tier, stat_label="win_rate", stat_suffix="%", sub_label=None):
+    """rows: list of dicts with hero, thumb_url, stat, sub (optional)."""
+    color = TIER_COLORS.get(str(tier).upper(), ACCENT_CYAN)
+    glow = _hex_to_rgba(color, 0.45)
+    chips = []
+    for r in rows:
+        thumb = r.get("thumb_url")
+        if thumb:
+            avatar_style = f"background-image:url('{thumb}');"
+            inner = ""
+        else:
+            acolor = hero_avatar_color(r["hero"])
+            avatar_style = f"background: radial-gradient(circle at 50% 35%, {acolor}33, #10131c 75%);"
+            initials = "".join([w[0] for w in r["hero"].replace("-", " ").split()][:2]).upper()
+            inner = (
+                f'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
+                f'font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:0.95rem;color:{acolor};">{initials}</div>'
+            )
+        stat_txt = f'<div class="tc-stat">{r["stat"]}{stat_suffix}</div>' if r.get("stat") is not None else ""
+        sub_txt = f'<div class="tc-sub">{r["sub"]}</div>' if r.get("sub") else ""
+        chips.append(
+            f'<div class="tier-chip">'
+            f'<div class="tc-avatar" style="{avatar_style}position:relative;--tc-color:{color};--tc-glow:{glow};">{inner}</div>'
+            f'<div class="tc-name">{r["hero"]}</div>{stat_txt}{sub_txt}'
+            f'</div>'
+        )
+    return f'<div class="tier-grid">{"".join(chips)}</div>'
 
 
 def role_chip(role):
@@ -249,7 +383,7 @@ def hero_avatar_color(hero):
 
 def hero_card_html(hero, sub="", tier=None, video_url=None, thumb_url=None):
     tier_html = tier_badge(tier) if tier else ""
-    play_html = '<div class="hc-play">▶</div>' if video_url else ""
+    play_html = '<span class="hc-play">▶</span>' if video_url else ""
     if thumb_url:
         style = f'background-image:url({thumb_url});'
         inner = ""
@@ -258,15 +392,15 @@ def hero_card_html(hero, sub="", tier=None, video_url=None, thumb_url=None):
         style = f"background: radial-gradient(circle at 50% 35%, {color}33, #10131c 75%);"
         initials = "".join([w[0] for w in hero.replace("-", " ").split()][:2]).upper()
         inner = (
-            f'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
-            f'font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:2.2rem;color:{color};opacity:0.85;">{initials}</div>'
+            f'<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
+            f'font-family:\'Rajdhani\',sans-serif;font-weight:700;font-size:2.2rem;color:{color};opacity:0.85;">{initials}</span>'
         )
     tag = "a" if video_url else "div"
     href = f'href="{video_url}" target="_blank"' if video_url else ""
     return (
         f'<{tag} class="hero-card" style="{style}" {href}>'
-        f'{inner}{play_html}<div class="hc-tier">{tier_html}</div>'
-        f'<div class="hc-label"><div class="hc-name">{hero}</div><div class="hc-sub">{sub}</div></div>'
+        f'{inner}{play_html}<span class="hc-tier">{tier_html}</span>'
+        f'<span class="hc-label"><span class="hc-name">{hero}</span><span class="hc-sub">{sub}</span></span>'
         f'</{tag}>'
     )
 
@@ -682,19 +816,22 @@ with sub_official:
             if tier_rows.empty:
                 continue
             st.markdown(tier_badge(t) + f"&nbsp;&nbsp;**{len(tier_rows)} heroes**", unsafe_allow_html=True)
-            if has_extra_cols and sort_col in tier_rows.columns:
-                display = tier_rows[["hero", "role", "win_rate", "pick_rate", "ban_rate"]].copy()
-                display["role"] = display["role"].map(lambda r: ROLE_LABEL.get(r, r) if pd.notna(r) else "—")
-                display = display.sort_values(sort_col, ascending=False, na_position="last")
-                display.columns = ["Hero", "Role", "Win Rate %", "Pick Rate %", "Ban Rate %"]
-                st.dataframe(display, use_container_width=True, hide_index=True)
-            else:
-                chips = "".join(
-                    f'<span class="role-chip" style="color:#eaeef5;border-color:rgba(255,255,255,0.18);background:rgba(255,255,255,0.04)">'
-                    f'{r["hero"]}{" · " + str(r["win_rate"]) + "%" if pd.notna(r["win_rate"]) else ""}</span>'
-                    for _, r in tier_rows.sort_values("hero").iterrows()
-                )
-                st.markdown(f'<div style="margin-bottom:1rem">{chips}</div>', unsafe_allow_html=True)
+            tier_rows = tier_rows.sort_values(sort_col, ascending=False, na_position="last") if sort_col in tier_rows.columns else tier_rows
+            grid_rows = []
+            for _, r in tier_rows.iterrows():
+                grid_rows.append({
+                    "hero": r["hero"],
+                    "thumb_url": hero_image_url(r["hero"]),
+                    "stat": r.get(sort_col),
+                    "sub": ROLE_LABEL.get(r.get("role"), r.get("role")) if pd.notna(r.get("role")) else None,
+                })
+            st.markdown(tier_grid_html(grid_rows, t), unsafe_allow_html=True)
+            if has_extra_cols:
+                with st.expander(f"View {t}-tier as table"):
+                    display = tier_rows[["hero", "role", "win_rate", "pick_rate", "ban_rate"]].copy()
+                    display["role"] = display["role"].map(lambda r: ROLE_LABEL.get(r, r) if pd.notna(r) else "—")
+                    display.columns = ["Hero", "Role", "Win Rate %", "Pick Rate %", "Ban Rate %"]
+                    st.dataframe(display, use_container_width=True, hide_index=True)
 
 with sub_personal:
     st.subheader("Your personal tier list")
@@ -711,14 +848,23 @@ with sub_personal:
                 continue
             tier_order = ["S", "A", "B", "C", "D"]
             for t in tier_order:
-                tier_rows = pdf[pdf["tier"] == t]
+                tier_rows = pdf[pdf["tier"] == t].sort_values("win_rate", ascending=False)
                 if tier_rows.empty:
                     continue
                 st.markdown(tier_badge(t) + f"&nbsp;&nbsp;**{len(tier_rows)} heroes**", unsafe_allow_html=True)
-                display = tier_rows[["hero", "role", "win_rate", "pick_rate", "matches", "hero_power"]].copy()
-                display = display.sort_values("win_rate", ascending=False)
-                display.columns = ["Hero", "Role(s)", "Win Rate %", "Pick Rate %", "Matches", "Hero Power"]
-                st.dataframe(display, use_container_width=True, hide_index=True)
+                grid_rows = []
+                for _, r in tier_rows.iterrows():
+                    grid_rows.append({
+                        "hero": r["hero"],
+                        "thumb_url": hero_image_url(r["hero"]),
+                        "stat": r.get("win_rate"),
+                        "sub": f"{int(r['matches'])}g",
+                    })
+                st.markdown(tier_grid_html(grid_rows, t), unsafe_allow_html=True)
+                with st.expander(f"View {t}-tier as table"):
+                    display = tier_rows[["hero", "role", "win_rate", "pick_rate", "matches", "hero_power"]].copy()
+                    display.columns = ["Hero", "Role(s)", "Win Rate %", "Pick Rate %", "Matches", "Hero Power"]
+                    st.dataframe(display, use_container_width=True, hide_index=True)
             st.divider()
         st.caption("Tiers: S ≥60% · A ≥52% · B ≥45% · C ≥35% · D <35% win rate. Small sample sizes (1-2 games) can be noisy — check the Matches column.")
 
