@@ -1511,20 +1511,37 @@ with tab_dashboard:
     st.dataframe(style_match_table(history), use_container_width=True, hide_index=True)
 
     st.divider()
-    st.subheader("Match detail (draft)")
+    st.subheader("Match detail")
 
     match_options = df.apply(
-        lambda r: f"{r['played_at'].strftime('%Y-%m-%d %H:%M')} — {r['my_hero']} ({r['result']})",
+        lambda r: f"{r['played_at'].strftime('%Y-%m-%d %H:%M')} — {r['my_hero'] if pd.notna(r['my_hero']) else 'unknown hero'} ({r['result']})",
         axis=1,
     )
     selected = st.selectbox("Pick a match", options=list(match_options), index=0 if len(match_options) else None)
     if selected is not None:
         sel_idx = match_options[match_options == selected].index[0]
-        match_id = df.loc[sel_idx, "id"]
-        picks = match_heroes_df[match_heroes_df["match_id"] == match_id] if not match_heroes_df.empty else pd.DataFrame()
-        if picks.empty:
-            st.caption("No draft data logged for this match.")
+        match_row = df.loc[sel_idx]
+        match_id = match_row["id"]
+
+        if pd.notna(match_row.get("commentary")):
+            result_color = WIN_GREEN if match_row["result"] == "win" else LOSS_RED
+            st.markdown(
+                f'<div class="mlbb-tip" style="border-left-color:{result_color};">'
+                f'<b>\U0001F9E0 Coach\'s take</b><br>{match_row["commentary"]}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            if pd.notna(match_row.get("tip")):
+                st.markdown(f'<div class="mlbb-tip"><b>\U0001F4A1 Try this next time</b><br>{match_row["tip"]}</div>', unsafe_allow_html=True)
         else:
+            st.caption(
+                "No commentary logged for this match yet"
+                + ("" if pd.notna(match_row.get("my_hero")) else " — hero wasn't recorded for it either")
+                + ". Send Claude the hero you played and it'll get added."
+            )
+
+        picks = match_heroes_df[match_heroes_df["match_id"] == match_id] if not match_heroes_df.empty else pd.DataFrame()
+        if not picks.empty:
             ally = picks[picks["team"] == "ally"]
             enemy = picks[picks["team"] == "enemy"]
             pc1, pc2 = st.columns(2)
