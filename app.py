@@ -620,9 +620,18 @@ with tab_tierlist:
     if tiers.empty:
         st.info("No tier list data yet. Send a tier-list screenshot to Claude and it'll be added here.")
     else:
-        st.caption(f"Source(s): {', '.join(sorted(tiers['source'].dropna().unique().tolist()))} · patch {tiers['patch'].dropna().iloc[0] if tiers['patch'].notna().any() else '—'}")
+        src_list = sorted(tiers['source'].dropna().unique().tolist())
+        is_official = any("mobilelegends.com" in s for s in src_list)
+        badge = "✅ Official Moonton data" if is_official else "Community source"
+        st.caption(f"{badge} · Source: {', '.join(src_list)} · snapshot {tiers['snapshot_date'].max()}")
+
         pool_heroes = set(pool["hero"].unique().tolist()) if not pool.empty else set()
-        only_pool = st.checkbox("Show only heroes in my pool", value=True)
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            only_pool = st.checkbox("Show only heroes in my pool", value=False)
+        with c2:
+            sort_by = st.selectbox("Sort by", ["Win rate", "Pick rate", "Ban rate"], index=0)
+
         tv = tiers.copy()
         if only_pool and pool_heroes:
             tv = tv[tv["hero"].isin(pool_heroes)]
@@ -634,17 +643,27 @@ with tab_tierlist:
             inv_label = {v: k for k, v in ROLE_LABEL.items()}
             tv = tv[tv["role"] == inv_label.get(role_pick, role_pick)]
 
+        sort_col = {"Win rate": "win_rate", "Pick rate": "pick_rate", "Ban rate": "ban_rate"}[sort_by]
+        has_extra_cols = "pick_rate" in tv.columns and "ban_rate" in tv.columns
+
         for t in tier_order:
             tier_rows = tv[tv["tier"].str.upper() == t] if not tv.empty else pd.DataFrame()
             if tier_rows.empty:
                 continue
             st.markdown(tier_badge(t) + f"&nbsp;&nbsp;**{len(tier_rows)} heroes**", unsafe_allow_html=True)
-            chips = "".join(
-                f'<span class="role-chip" style="color:#eaeef5;border-color:rgba(255,255,255,0.18);background:rgba(255,255,255,0.04)">'
-                f'{r["hero"]}{" · " + str(r["win_rate"]) + "%" if pd.notna(r["win_rate"]) else ""}</span>'
-                for _, r in tier_rows.sort_values("hero").iterrows()
-            )
-            st.markdown(f'<div style="margin-bottom:1rem">{chips}</div>', unsafe_allow_html=True)
+            if has_extra_cols and sort_col in tier_rows.columns:
+                display = tier_rows[["hero", "role", "win_rate", "pick_rate", "ban_rate"]].copy()
+                display["role"] = display["role"].map(lambda r: ROLE_LABEL.get(r, r) if pd.notna(r) else "—")
+                display = display.sort_values(sort_col, ascending=False, na_position="last")
+                display.columns = ["Hero", "Role", "Win Rate %", "Pick Rate %", "Ban Rate %"]
+                st.dataframe(display, use_container_width=True, hide_index=True)
+            else:
+                chips = "".join(
+                    f'<span class="role-chip" style="color:#eaeef5;border-color:rgba(255,255,255,0.18);background:rgba(255,255,255,0.04)">'
+                    f'{r["hero"]}{" · " + str(r["win_rate"]) + "%" if pd.notna(r["win_rate"]) else ""}</span>'
+                    for _, r in tier_rows.sort_values("hero").iterrows()
+                )
+                st.markdown(f'<div style="margin-bottom:1rem">{chips}</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Dashboard
