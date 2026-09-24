@@ -285,6 +285,57 @@ h2, h3 {{ color: #eef2ff !important; }}
     border-radius: 12px !important;
     overflow: hidden;
 }}
+
+/* ---- Sidebar filters: glassmorphic selects + tags ---- */
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {{
+    color: #8b93c4 !important;
+    font-family: 'Rajdhani', sans-serif; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.76rem;
+}}
+[data-testid="stMultiSelect"] div[role="group"][data-rac],
+[data-testid="stSelectbox"] div[role="group"][data-rac] {{
+    background: rgba(18,16,40,0.6) !important;
+    border: 1px solid rgba(46,230,255,0.18) !important;
+    border-radius: 10px !important;
+    backdrop-filter: blur(6px);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}}
+[data-testid="stMultiSelect"] div[role="group"][data-rac]:focus-within,
+[data-testid="stSelectbox"] div[role="group"][data-rac]:focus-within {{
+    border-color: rgba(46,230,255,0.6) !important;
+    box-shadow: 0 0 12px rgba(46,230,255,0.25) !important;
+}}
+[data-testid="stMultiSelectTagsContainer"] span[data-tag] {{
+    background: rgba(46,230,255,0.14) !important;
+    border: 1px solid rgba(46,230,255,0.4) !important;
+    border-radius: 999px !important;
+    color: {ACCENT_CYAN} !important;
+}}
+
+/* ---- Alerts / empty states ---- */
+[data-testid="stAlert"] {{
+    background: rgba(46,230,255,0.06) !important;
+    border: 1px solid rgba(46,230,255,0.22) !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(6px);
+}}
+
+/* ---- Dividers: gradient line instead of flat grey ---- */
+hr {{
+    border: none !important;
+    height: 1px !important;
+    background: linear-gradient(90deg, rgba(168,85,247,0.55), rgba(46,230,255,0.55), rgba(233,53,193,0.3)) !important;
+    opacity: 0.55;
+    margin: 1.3rem 0 !important;
+}}
+
+/* ---- Spinner ---- */
+[data-testid="stSpinner"] {{
+    color: {ACCENT_CYAN} !important;
+}}
+[data-testid="stSpinner"] p {{
+    font-family: 'Rajdhani', sans-serif; font-weight: 600; color: {ACCENT_CYAN} !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -306,6 +357,21 @@ def style_fig(fig):
 def tier_badge(tier):
     color = TIER_COLORS.get(str(tier).upper(), "#888")
     return f'<span class="tier-badge" style="background:{color}">{tier}</span>'
+
+
+def style_match_table(df):
+    """Tint rows by result (win/loss) and highlight MVP games in gold."""
+    def row_style(row):
+        if row.get("mvp"):
+            bg = f"background-color: {_hex_to_rgba(ACCENT_GOLD, 0.10)};"
+        elif row.get("result") == "win":
+            bg = f"background-color: {_hex_to_rgba(WIN_GREEN, 0.07)};"
+        elif row.get("result") == "loss":
+            bg = f"background-color: {_hex_to_rgba(LOSS_RED, 0.07)};"
+        else:
+            bg = ""
+        return [bg] * len(row)
+    return df.style.apply(row_style, axis=1)
 
 
 def _hex_to_rgba(hex_color, alpha):
@@ -619,7 +685,7 @@ def render_hero_profile(hero):
         hm = hero_matches[cols].copy().sort_values("played_at", ascending=False)
         hm["played_at"] = hm["played_at"].dt.strftime("%Y-%m-%d %H:%M")
         hm["kda"] = hm["kda"].round(2)
-        st.dataframe(hm, use_container_width=True, hide_index=True)
+        st.dataframe(style_match_table(hm), use_container_width=True, hide_index=True)
     st.divider()
 
     hero_tips = tips[tips["hero"] == hero] if not tips.empty else pd.DataFrame()
@@ -1109,7 +1175,7 @@ with tab_dashboard:
     history = df[display_cols].copy()
     history["played_at"] = history["played_at"].dt.strftime("%Y-%m-%d %H:%M")
     history["kda"] = history["kda"].round(2)
-    st.dataframe(history, use_container_width=True, hide_index=True)
+    st.dataframe(style_match_table(history), use_container_width=True, hide_index=True)
 
     st.divider()
     st.subheader("Match detail (draft)")
