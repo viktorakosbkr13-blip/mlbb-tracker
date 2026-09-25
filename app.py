@@ -580,6 +580,83 @@ def render_activity_heatmap(df):
     st.caption("Darker green = more games played that day. Last 12 weeks.")
 
 
+def render_time_patterns(df):
+    if df.empty:
+        return
+    st.subheader("When do you actually win?")
+    st.caption(
+        "Win rate by hour and day of week, from your own logged matches — use it for scheduling, "
+        "not as a verdict on any single game."
+    )
+    d = df.copy()
+    d["hour"] = d["played_at"].dt.hour
+    d["dow"] = d["played_at"].dt.day_name()
+
+    tcol1, tcol2 = st.columns(2)
+    with tcol1:
+        hourly = d.groupby("hour").agg(games=("result", "count"), wins=("result", lambda s: (s == "win").sum())).reset_index()
+        hourly["win_rate"] = (hourly["wins"] / hourly["games"] * 100).round(1)
+        fig = px.bar(
+            hourly, x="hour", y="win_rate", hover_data=["games"],
+            labels={"hour": "Hour of day", "win_rate": "Win rate (%)"}, title="By hour",
+        )
+        fig.update_yaxes(range=[0, 100])
+        st.plotly_chart(style_fig(fig), use_container_width=True)
+    with tcol2:
+        dow_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        daily = (
+            d.groupby("dow").agg(games=("result", "count"), wins=("result", lambda s: (s == "win").sum()))
+            .reindex(dow_order).dropna(how="all").reset_index()
+        )
+        daily["win_rate"] = (daily["wins"] / daily["games"] * 100).round(1)
+        fig2 = px.bar(
+            daily, x="dow", y="win_rate", hover_data=["games"],
+            labels={"dow": "Day", "win_rate": "Win rate (%)"}, title="By day of week",
+        )
+        fig2.update_yaxes(range=[0, 100])
+        st.plotly_chart(style_fig(fig2), use_container_width=True)
+
+    if len(d) < 15:
+        st.caption(f"Only {len(d)} games logged — these patterns are still noisy. They'll sharpen as more matches come in.")
+
+
+def compute_streak_followup_wr(results, streak_len=2, streak_result="loss"):
+    """Win rate on the game immediately after a run of `streak_len` consecutive `streak_result`s."""
+    outcomes = [results[i] for i in range(streak_len, len(results)) if all(r == streak_result for r in results[i - streak_len:i])]
+    if not outcomes:
+        return None, 0
+    wins = sum(1 for r in outcomes if r == "win")
+    return wins / len(outcomes) * 100, len(outcomes)
+
+
+def render_team_strength(df):
+    if "team_stars_avg" not in df.columns:
+        return
+    st.subheader("Teammate vs. enemy strength")
+    st.caption(
+        "Logged manually — after a match that feels lopsided, check each player's profile (career star/rank count) "
+        "and tell Claude the numbers so it gets added here."
+    )
+    logged = df.dropna(subset=["team_stars_avg", "enemy_stars_avg"])
+    if logged.empty:
+        st.caption("No strength-gap data logged yet.")
+        return
+    logged = logged.copy()
+    logged["gap"] = logged["enemy_stars_avg"] - logged["team_stars_avg"]
+    fig = px.bar(
+        logged.sort_values("played_at"), x="played_at", y="gap", color="result",
+        color_discrete_map={"win": WIN_GREEN, "loss": LOSS_RED},
+        labels={"played_at": "Date", "gap": "Enemy stars − your team's stars"},
+    )
+    st.plotly_chart(style_fig(fig), use_container_width=True)
+    avg_gap_losses = logged[logged["result"] == "loss"]["gap"].mean()
+    caption = f"Avg strength gap in losses: {avg_gap_losses:+.0f} stars"
+    if (logged["result"] == "win").any():
+        avg_gap_wins = logged[logged["result"] == "win"]["gap"].mean()
+        caption += f" · in wins: {avg_gap_wins:+.0f}"
+    st.caption(caption)
+
+
 def render_hero_radar(hero, role):
     if tiers.empty:
         return
@@ -1469,9 +1546,27 @@ with tab_dashboard:
         if badges:
             st.markdown("".join(badges), unsafe_allow_html=True)
 
+        if cur_streak_result == "loss" and cur_streak >= 2:
+            follow_wr, n = compute_streak_followup_wr(results, streak_len=2, streak_result="loss")
+            if follow_wr is not None:
+                small_sample = " Small sample — take this as a nudge, not gospel." if n < 5 else " Worth considering a short break before queuing again."
+                st.markdown(
+                    f'<div class="mlbb-tip" style="border-left-color:{LOSS_RED};">'
+                    f'<b>\U000026D4 Stop-loss check</b><br>'
+                    f"You're on a {cur_streak}-loss streak. Historically, your win rate on the next game after "
+                    f'2+ straight losses is <b>{follow_wr:.0f}%</b> (from {n} occurrence{"s" if n != 1 else ""} in your history).'
+                    f"{small_sample}"
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
     st.divider()
 
     render_activity_heatmap(df)
+    st.divider()
+    render_time_patterns(df)
+    st.divider()
+    render_team_strength(df)
     st.divider()
     render_rank_ladder(df)
 
