@@ -40,6 +40,14 @@ METRIC_LABEL = {
     "kda": "KDA",
 }
 METRIC_LOWER_IS_BETTER = {"deaths", "damage_taken"}
+TIP_CATEGORY_META = {
+    "macro": {"icon": "\U0001F6E1️", "color": ACCENT_CYAN, "label": "Macro"},
+    "pattern": {"icon": "\U0001F50D", "color": ACCENT_GOLD, "label": "Pattern"},
+    "meta": {"icon": "\U000026A1", "color": ACCENT_MAGENTA, "label": "Meta"},
+    "hero": {"icon": "\U0001F3AF", "color": ACCENT_PURPLE, "label": "Hero"},
+    "general": {"icon": "\U0001F4A1", "color": WIN_GREEN, "label": "General"},
+    "aspirational": {"icon": "\U0001F31F", "color": ACCENT_GOLD, "label": "Inspiration"},
+}
 
 st.markdown(f"""
 <style>
@@ -401,6 +409,37 @@ hr {{
 }}
 .rank-label {{ font-size: 0.62rem; color: #8b93c4; font-family: 'Rajdhani', sans-serif; font-weight: 600; white-space: nowrap; }}
 .rank-step.active .rank-label {{ color: {ACCENT_GOLD}; font-weight: 700; }}
+
+/* ---- Coaching tip cards ---- */
+.tip-card {{
+    background: rgba(18,16,40,0.55);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--tip-color, {ACCENT_CYAN});
+    border-top: 3px solid var(--tip-color, {ACCENT_CYAN});
+    border-radius: 14px;
+    padding: 0.9rem 1rem 0.7rem 1rem;
+    margin-bottom: 0.5rem;
+    min-height: 92px;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}}
+.tip-card:hover {{ box-shadow: 0 0 18px var(--tip-glow, rgba(46,230,255,0.25)); transform: translateY(-2px); }}
+.tip-card-badge {{
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.68rem;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--tip-color, {ACCENT_CYAN}); margin-bottom: 0.35rem;
+}}
+.tip-card-title {{ font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.95rem; color: #f2f5fa; line-height: 1.25; }}
+.tip-card-hero {{ font-size: 0.7rem; color: #8b93c4; margin-top: 0.2rem; }}
+
+.meta-card {{
+    background: rgba(233,53,193,0.06);
+    border: 1px solid rgba(233,53,193,0.3);
+    border-radius: 12px;
+    padding: 0.7rem 0.9rem;
+    margin-bottom: 0.5rem;
+}}
+.meta-card b {{ color: {ACCENT_MAGENTA}; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -520,6 +559,31 @@ def badge_chip(icon, label, glow=False):
     return f'<span class="{cls}"><span class="bc-icon">{icon}</span>{label}</span>'
 
 
+def tip_card_html(tip):
+    meta = TIP_CATEGORY_META.get(tip["category"], {"icon": "\U0001F4A1", "color": ACCENT_CYAN, "label": str(tip["category"]).title()})
+    glow = _hex_to_rgba(meta["color"], 0.35)
+    hero_line = f'<div class="tip-card-hero">\U0001F464 {tip["hero"]}</div>' if pd.notna(tip.get("hero")) else ""
+    return (
+        f'<div class="tip-card" style="--tip-color:{meta["color"]};--tip-glow:{glow};">'
+        f'<div class="tip-card-badge">{meta["icon"]} {meta["label"]}</div>'
+        f'<div class="tip-card-title">{tip["title"]}</div>'
+        f'{hero_line}'
+        f'</div>'
+    )
+
+
+def render_tip_grid(tips_df, cols=3):
+    rows = [tips_df.iloc[i:i + cols] for i in range(0, len(tips_df), cols)]
+    for row in rows:
+        columns = st.columns(cols)
+        for col, (_, tip) in zip(columns, row.iterrows()):
+            with col:
+                st.markdown(tip_card_html(tip), unsafe_allow_html=True)
+                with st.expander("Read"):
+                    st.markdown(tip["body"])
+                    st.caption(f"{tip['source']} · {pd.to_datetime(tip['created_at']).strftime('%Y-%m-%d')}")
+
+
 def render_rank_ladder(df):
     st.subheader("Rank ladder")
     current = None
@@ -585,12 +649,14 @@ def render_time_patterns(df):
         return
     st.subheader("When do you actually win?")
     st.caption(
-        "Win rate by hour and day of week, from your own logged matches — use it for scheduling, "
-        "not as a verdict on any single game."
+        "Win rate by hour (Norway time) and day of week, from your own logged matches — use it for scheduling, "
+        "not as a verdict on any single game. This is the honest alternative to generic \"best hours to queue\" "
+        "advice found online — it's built from your actual results, not someone else's server."
     )
     d = df.copy()
-    d["hour"] = d["played_at"].dt.hour
-    d["dow"] = d["played_at"].dt.day_name()
+    played_local = d["played_at"].dt.tz_convert("Europe/Oslo") if d["played_at"].dt.tz is not None else d["played_at"].dt.tz_localize("UTC").dt.tz_convert("Europe/Oslo")
+    d["hour"] = played_local.dt.hour
+    d["dow"] = played_local.dt.day_name()
 
     tcol1, tcol2 = st.columns(2)
     with tcol1:
@@ -616,6 +682,21 @@ def render_time_patterns(df):
         fig2.update_yaxes(range=[0, 100])
         st.plotly_chart(style_fig(fig2), use_container_width=True)
 
+    min_sample = 3
+    qualified = hourly[hourly["games"] >= min_sample]
+    if len(qualified) >= 2:
+        best = qualified.loc[qualified["win_rate"].idxmax()]
+        worst = qualified.loc[qualified["win_rate"].idxmin()]
+        if best["hour"] != worst["hour"]:
+            st.markdown(
+                f'<div class="insight-card">'
+                f'<div class="insight-label">\U0001F551 Your window, not a stranger\'s</div>'
+                f'<div class="insight-body">Best so far: <b>{int(best["hour"]):02d}:00</b> Norway time '
+                f'({best["win_rate"]:.0f}% over {int(best["games"])} games). '
+                f'Worst so far: <b>{int(worst["hour"]):02d}:00</b> ({worst["win_rate"]:.0f}% over {int(worst["games"])} games).'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
     if len(d) < 15:
         st.caption(f"Only {len(d)} games logged — these patterns are still noisy. They'll sharpen as more matches come in.")
 
@@ -1103,21 +1184,24 @@ with tab_coach:
         st.subheader("⚡ Latest meta shifts")
         for _, tip in meta_tips.head(6).iterrows():
             hero_tag = f" ({tip['hero']})" if pd.notna(tip.get("hero")) else ""
-            st.warning(f"**{tip['title']}{hero_tag}** — {tip['body']}")
+            st.markdown(
+                f'<div class="meta-card"><b>{tip["title"]}{hero_tag}</b><br>{tip["body"]}</div>',
+                unsafe_allow_html=True,
+            )
         st.divider()
 
-    st.subheader("Coaching tips")
-    st.caption("Generated from your NotebookLM coach — grounded in your own stats plus current meta/community sources.")
+    st.subheader("\U0001F4DA Coaching tips")
+    st.caption("Grounded in your own stats plus current meta/community sources. Click a card to read the full tip.")
     if tips.empty:
         st.info("No coaching tips yet.")
     else:
-        cat_filter = st.multiselect("Filter by category", sorted(tips["category"].unique().tolist()))
+        cats_present = sorted(tips["category"].unique().tolist())
+        cat_filter = st.multiselect(
+            "Filter by category", cats_present,
+            format_func=lambda c: f"{TIP_CATEGORY_META.get(c, {}).get('icon', '')} {TIP_CATEGORY_META.get(c, {'label': c.title()})['label']}",
+        )
         shown = tips[tips["category"].isin(cat_filter)] if cat_filter else tips
-        for _, tip in shown.iterrows():
-            hero_tag = f" · {tip['hero']}" if pd.notna(tip.get("hero")) else ""
-            with st.expander(f"{tip['title']}  ({tip['category']}{hero_tag})"):
-                st.write(tip["body"])
-                st.caption(f"Source: {tip['source']} · {pd.to_datetime(tip['created_at']).strftime('%Y-%m-%d')}")
+        render_tip_grid(shown.sort_values("created_at", ascending=False), cols=3)
 
 # ---------------------------------------------------------------------------
 # Builds
