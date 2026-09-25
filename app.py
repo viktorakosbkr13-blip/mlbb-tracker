@@ -18,7 +18,7 @@ st.set_page_config(page_title="MLBB Tracker", page_icon="\U0001F3AE", layout="wi
 # Theme
 # ---------------------------------------------------------------------------
 
-ACCENT_GOLD = "#f0c531"
+ACCENT_GOLD = "#ff7a45"  # warm orange accent (no yellow, per Viktor's request) — kept the name to avoid touching every reference
 ACCENT_CYAN = "#2ee6ff"
 ACCENT_PURPLE = "#a855f7"
 ACCENT_MAGENTA = "#e935c1"
@@ -27,7 +27,7 @@ BG_PANEL = "#0c0a22"
 WIN_GREEN = "#39ffb0"
 LOSS_RED = "#ff4d6d"
 
-TIER_COLORS = {"S": "#ff3d71", "A": "#ff9f43", "B": "#f2c94c", "C": "#39ffb0", "D": "#8892b0"}
+TIER_COLORS = {"S": "#ff3d71", "A": "#ff9f43", "B": "#e8963d", "C": "#39ffb0", "D": "#8892b0"}
 ROLE_ICON = {"exp": "⚔️", "jungle": "\U0001F332", "mid": "\U0001F52E", "roam": "\U0001F6E1️", "gold": "\U0001F3F9"}
 ROLE_LABEL = {"exp": "EXP Lane", "jungle": "Jungle", "mid": "Mid Lane", "roam": "Roam", "gold": "Gold Lane"}
 RANK_LADDER = ["Warrior", "Elite", "Master", "Grandmaster", "Epic", "Legend", "Mythic", "Mythical Honor", "Mythical Glory"]
@@ -92,16 +92,22 @@ h2, h3 {{ color: #eef2ff !important; }}
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }}
 
-/* ---- Hero banner ---- */
+/* ---- Hero banner (cinematic masthead) ---- */
 @keyframes glowPulse {{
     0%, 100% {{ box-shadow: 0 0 24px rgba(46,230,255,0.10), 0 0 60px rgba(168,85,247,0.06), inset 0 0 40px rgba(46,230,255,0.03); }}
     50% {{ box-shadow: 0 0 32px rgba(46,230,255,0.18), 0 0 80px rgba(168,85,247,0.12), inset 0 0 50px rgba(46,230,255,0.06); }}
 }}
+@keyframes titleSheen {{
+    0% {{ background-position: 0% 50%; }}
+    100% {{ background-position: 200% 50%; }}
+}}
 .mlbb-hero {{
-    padding: 2rem 2.2rem;
+    padding: 2.4rem 2.4rem 2rem 2.4rem;
     margin-bottom: 1.4rem;
-    border-radius: 18px;
-    background: linear-gradient(135deg, rgba(168,85,247,0.14), rgba(46,230,255,0.08) 45%, rgba(233,53,193,0.10));
+    border-radius: 20px;
+    background:
+        linear-gradient(135deg, rgba(168,85,247,0.16), rgba(46,230,255,0.08) 45%, rgba(233,53,193,0.12)),
+        repeating-linear-gradient(90deg, rgba(46,230,255,0.035) 0px, rgba(46,230,255,0.035) 1px, transparent 1px, transparent 42px);
     border: 1px solid rgba(46,230,255,0.28);
     animation: glowPulse 5s ease-in-out infinite;
     position: relative; overflow: hidden;
@@ -110,14 +116,49 @@ h2, h3 {{ color: #eef2ff !important; }}
     content: ''; position: absolute; top: -40%; right: -10%; width: 300px; height: 300px; border-radius: 50%;
     background: radial-gradient(circle, rgba(233,53,193,0.18), transparent 70%); pointer-events: none;
 }}
+.mlbb-hero::after {{
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, {ACCENT_CYAN}, {ACCENT_PURPLE}, {ACCENT_MAGENTA}, {ACCENT_GOLD}, {ACCENT_CYAN});
+    background-size: 200% 100%; animation: titleSheen 6s linear infinite;
+}}
+.mlbb-eyebrow {{
+    position: relative; z-index: 1;
+    font-family: 'Rajdhani', monospace; font-weight: 700; font-size: 0.72rem;
+    letter-spacing: 0.18em; text-transform: uppercase; color: {ACCENT_CYAN};
+    opacity: 0.85; margin-bottom: 0.6rem;
+}}
 .mlbb-hero h1 {{
     margin: 0; font-family: 'Orbitron', sans-serif !important; font-weight: 900;
-    font-size: 2.5rem; letter-spacing: 0.04em;
-    background: linear-gradient(90deg, {ACCENT_GOLD}, {ACCENT_MAGENTA} 45%, {ACCENT_CYAN});
+    font-size: 2.7rem; letter-spacing: 0.03em; position: relative; z-index: 1;
+    background: linear-gradient(90deg, {ACCENT_CYAN}, {ACCENT_PURPLE} 35%, {ACCENT_MAGENTA} 65%, {ACCENT_CYAN});
+    background-size: 200% 100%;
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     text-shadow: 0 0 30px rgba(46,230,255,0.25);
+    animation: titleSheen 8s linear infinite;
 }}
-.mlbb-hero p {{ margin: 0.45rem 0 0 0; color: #aab4d4; font-size: 0.95rem; position: relative; z-index: 1; }}
+.mlbb-hero p {{ margin: 0.5rem 0 0 0; color: #aab4d4; font-size: 0.95rem; position: relative; z-index: 1; }}
+.mlbb-hero-stats {{
+    display: flex; flex-wrap: wrap; gap: 0; margin-top: 1.3rem; position: relative; z-index: 1;
+    border-top: 1px solid rgba(46,230,255,0.18); padding-top: 1rem;
+}}
+.mlbb-hero-stat {{
+    flex: 1 1 120px; padding: 0 1.2rem; border-right: 1px solid rgba(46,230,255,0.14);
+}}
+.mlbb-hero-stat:last-child {{ border-right: none; }}
+.mlbb-hero-stat .label {{
+    font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.68rem;
+    text-transform: uppercase; letter-spacing: 0.08em; color: #8b93c4;
+}}
+.mlbb-hero-stat .value {{
+    font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 1.4rem; color: #f2f5fa; margin-top: 0.15rem;
+}}
+
+/* ---- Decorative section tag (editorial "/// readout" motif) ---- */
+.section-tag {{
+    font-family: 'Rajdhani', monospace; font-weight: 700; font-size: 0.68rem;
+    letter-spacing: 0.16em; text-transform: uppercase; color: {ACCENT_PURPLE};
+    opacity: 0.75; margin-bottom: -0.3rem; margin-top: 0.4rem;
+}}
 
 /* ---- Glassmorphic cards ---- */
 .mlbb-card {{
@@ -554,6 +595,10 @@ def result_chip(result):
     return f'<span class="result-chip {cls}">{label}</span>'
 
 
+def section_tag(text):
+    st.markdown(f'<div class="section-tag">/// {text}</div>', unsafe_allow_html=True)
+
+
 def badge_chip(icon, label, glow=False):
     cls = "badge-chip glow" if glow else "badge-chip"
     return f'<span class="{cls}"><span class="bc-icon">{icon}</span>{label}</span>'
@@ -971,9 +1016,36 @@ def go_to_hero(hero):
 if "selected_hero" not in st.session_state:
     st.session_state.selected_hero = None
 
+hero_stats_html = ""
+if not matches.empty:
+    _total_games = len(matches)
+    _wins = int((matches["result"] == "win").sum())
+    _wr = _wins / _total_games * 100 if _total_games else 0
+    _ordered = matches.sort_values("played_at")
+    _last_result = _ordered["result"].iloc[-1]
+    _cur_streak = 0
+    for _r in reversed(_ordered["result"].tolist()):
+        if _r == _last_result:
+            _cur_streak += 1
+        else:
+            break
+    _streak_label = f"{_cur_streak}{'W' if _last_result == 'win' else 'L'}"
+    _streak_color = WIN_GREEN if _last_result == "win" else LOSS_RED
+    hero_stats_html = (
+        '<div class="mlbb-hero-stats">'
+        f'<div class="mlbb-hero-stat"><div class="label">Games logged</div><div class="value" style="color:{ACCENT_CYAN}">{_total_games}</div></div>'
+        f'<div class="mlbb-hero-stat"><div class="label">Win rate</div><div class="value" style="color:{ACCENT_PURPLE}">{_wr:.0f}%</div></div>'
+        f'<div class="mlbb-hero-stat"><div class="label">Current streak</div><div class="value" style="color:{_streak_color}">{_streak_label}</div></div>'
+        '</div>'
+    )
+
 st.markdown(
-    '<div class="mlbb-hero"><h1>MLBB Tracker</h1>'
-    '<p>Match history, builds, meta tier list, and a coach grounded in your own stats.</p></div>',
+    '<div class="mlbb-hero">'
+    '<div class="mlbb-eyebrow">/// PRM ŁIMITLESS — LIVE PERFORMANCE FEED</div>'
+    '<h1>MLBB Tracker</h1>'
+    '<p>Match history, builds, meta tier list, and a coach grounded in your own stats.</p>'
+    f'{hero_stats_html}'
+    '</div>',
     unsafe_allow_html=True,
 )
 
@@ -1190,6 +1262,7 @@ with tab_coach:
             )
         st.divider()
 
+    section_tag("COACH.MODULE")
     st.subheader("\U0001F4DA Coaching tips")
     st.caption("Grounded in your own stats plus current meta/community sources. Click a card to read the full tip.")
     if tips.empty:
@@ -1207,6 +1280,7 @@ with tab_coach:
 # Builds
 # ---------------------------------------------------------------------------
 with tab_builds:
+    section_tag("BUILDS.MODULE")
     st.subheader("Build recommendations")
     st.caption("Current build/emblem/combo per hero in your pool, organized by role. Click a card's portrait to open its full profile. Refreshed weekly alongside the meta research.")
     if pool.empty:
@@ -1294,6 +1368,7 @@ sub_official, sub_personal, sub_top_counters, sub_draft_helper = st.tabs(
 )
 
 with sub_official:
+    section_tag("TIERLIST.MODULE")
     st.subheader("Current meta tier list")
     if tiers.empty:
         st.info("No tier list data yet. Send a tier-list screenshot to Claude and it'll be added here.")
@@ -1475,6 +1550,7 @@ with tab_dashboard:
             go_to_hero(quick_choice)
 
     if not pool.empty:
+        section_tag("ROSTER.MODULE")
         st.subheader("Your roster")
         st.caption("Click any hero to open their profile.")
         for role in [r for r in ["exp", "jungle", "mid", "roam"] if r in pool["role"].unique()]:
@@ -1752,6 +1828,7 @@ with tab_dashboard:
             st.plotly_chart(style_fig(fig), use_container_width=True)
 
     st.divider()
+    section_tag("HISTORY.MODULE")
     st.subheader("Match history")
 
     display_cols = ["played_at", "mode", "result", "my_hero", "my_role", "kills", "deaths",
