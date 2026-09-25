@@ -31,6 +31,15 @@ TIER_COLORS = {"S": "#ff3d71", "A": "#ff9f43", "B": "#f2c94c", "C": "#39ffb0", "
 ROLE_ICON = {"exp": "⚔️", "jungle": "\U0001F332", "mid": "\U0001F52E", "roam": "\U0001F6E1️", "gold": "\U0001F3F9"}
 ROLE_LABEL = {"exp": "EXP Lane", "jungle": "Jungle", "mid": "Mid Lane", "roam": "Roam", "gold": "Gold Lane"}
 RANK_LADDER = ["Warrior", "Elite", "Master", "Grandmaster", "Epic", "Legend", "Mythic", "Mythical Honor", "Mythical Glory"]
+METRIC_LABEL = {
+    "deaths": "Deaths",
+    "gold_earned": "Gold earned",
+    "damage_dealt": "Hero damage",
+    "damage_taken": "Damage taken",
+    "teamfight_participation": "Teamfight participation %",
+    "kda": "KDA",
+}
+METRIC_LOWER_IS_BETTER = {"deaths", "damage_taken"}
 
 st.markdown(f"""
 <style>
@@ -946,10 +955,46 @@ if st.session_state.selected_hero:
 
 tab_dashboard, tab_builds, tab_tierlist, tab_coach = st.tabs(["\U0001F4CA Dashboard", "\U0001F6E0️ Builds", "\U0001F3C6 Tier List", "\U0001F9E0 Coach"])
 
+
+def render_tip_followthrough():
+    if matches.empty or "target_metric" not in matches.columns:
+        return
+    tipped = matches[matches["target_metric"].notna()]
+    if tipped.empty:
+        return
+    st.subheader("\U0001F4C8 Is it working?")
+    st.caption("Whether the stat each past tip targeted has actually moved in your games on that hero since.")
+    for _, t in tipped.sort_values("played_at", ascending=False).iterrows():
+        metric = t["target_metric"]
+        hero = t["my_hero"]
+        if pd.isna(hero) or metric not in METRIC_LABEL or metric not in matches.columns:
+            continue
+        label = METRIC_LABEL[metric]
+        before_val = t.get(metric)
+        if pd.isna(before_val):
+            continue
+        later = matches[(matches["my_hero"] == hero) & (matches["played_at"] > t["played_at"])]
+        later_vals = later[metric].dropna() if not later.empty else later
+        with st.container():
+            st.markdown(f"**{hero}** — {label}")
+            if later_vals.empty:
+                st.caption(f"Tip given {t['played_at'].strftime('%Y-%m-%d')} — waiting on your next {hero} game to check progress.")
+            else:
+                after_val = later_vals.mean()
+                lower_is_better = metric in METRIC_LOWER_IS_BETTER
+                improved = (after_val < before_val) if lower_is_better else (after_val > before_val)
+                icon = "✅" if improved else "⚠️"
+                verdict = "trending the right way" if improved else "hasn't moved yet — worth revisiting"
+                st.caption(f"{icon} {before_val:.0f} → {after_val:.0f} avg over {len(later_vals)} game(s) since — {verdict}")
+    st.divider()
+
+
 # ---------------------------------------------------------------------------
 # Coach
 # ---------------------------------------------------------------------------
 with tab_coach:
+    render_tip_followthrough()
+
     aspire_reports = reports[reports["category"] == "aspirational"] if not reports.empty else reports
     if not aspire_reports.empty:
         st.subheader("\U0001F31F Play like your inspirations")
@@ -1083,8 +1128,8 @@ def compute_personal_tiers(scope):
     return df
 
 
-sub_official, sub_personal, sub_top_counters = st.tabs(
-    ["\U0001F30D Official meta", "\U0001F464 My performance", "\U0001F525 Top counters"]
+sub_official, sub_personal, sub_top_counters, sub_draft_helper = st.tabs(
+    ["\U0001F30D Official meta", "\U0001F464 My performance", "\U0001F525 Top counters", "\U0001F3AF Draft helper"]
 )
 
 with sub_official:
@@ -1212,6 +1257,34 @@ with sub_top_counters:
                     src_txt = f" — [source]({row['src']})" if pd.notna(row.get("src")) else ""
                     st.caption(f"{row['note']}{src_txt}")
             st.divider()
+
+with sub_draft_helper:
+    st.subheader("Counter-pick advisor")
+    st.caption(
+        "Pick the enemy heroes you're facing (or expect) and see which of your own pool heroes "
+        "officially counter them, from the same mobilelegends.com/rank data as the rest of this tab."
+    )
+    all_hero_options = sorted(tiers["hero"].unique().tolist()) if not tiers.empty else []
+    enemy_picks = st.multiselect("Enemy draft", all_hero_options, key="draft_helper_enemies")
+
+    if not enemy_picks:
+        st.caption("Add one or more enemy heroes above to see your counter options.")
+    elif counters.empty or pool.empty:
+        st.info("No counter data or hero pool loaded yet.")
+    else:
+        pool_heroes = set(pool["hero"].unique().tolist())
+        any_found = False
+        for enemy in enemy_picks:
+            enemy_row = counters[(counters["hero"] == enemy) & (counters["countered_by"].isin(pool_heroes))]
+            st.markdown(f"**Vs {enemy}**")
+            if enemy_row.empty:
+                st.caption("None of your pool heroes are an official counter to this hero.")
+            else:
+                any_found = True
+                picks = sorted(enemy_row["countered_by"].unique().tolist())
+                st.markdown(counter_chip_row(picks, WIN_GREEN), unsafe_allow_html=True)
+        if not any_found:
+            st.caption("Tip: check the \U0001F525 Top counters tab above for strong picks outside your current pool.")
 
 # ---------------------------------------------------------------------------
 # Dashboard
